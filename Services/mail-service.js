@@ -7,20 +7,20 @@ class MailServer {
       port: 587,
       secure: false,
       auth: {
-        user: "okhinkoartur@gmail.com",
-        pass: "lomahokxyupulhqa",
+        user: "pokrasgrad@gmail.com",
+        pass: "emfw eeif nhii cdge",
       },
     });
   }
   async sendActivationMail(to, link) {
     try {
       await this.transporter.sendMail({
-        from: "okhinkoartur@gmail.com",
+        from: "pokrasgrad@gmail.com",
         to,
         subject: "",
         text: "",
         html: `
-        <div style="display: flex; flex-direction: column; align-items: center">
+        <div style="display: flex; flex-direction: column; align-items: center;">
   <div
     style="
       background: linear-gradient(45deg, rgb(26, 92, 113), rgb(0, 238, 255));
@@ -44,6 +44,8 @@ class MailServer {
       border-image: linear-gradient(45deg, rgb(26, 92, 113), rgb(0, 238, 255));
       border-image-slice: 1;
       border-radius: 10px;
+      max-width: calc(100% - 20px); 
+      margin: 10px;
     "
   >
     <i style="align-self: flex-start; margin: 10px"
@@ -52,8 +54,8 @@ class MailServer {
     <div style="margin: 10px">Номер телефона: 8 (987) 444 07 63</div>
     <div
       style="
-        display: flex;
-        flex-direction: row;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         margin: 10px;
         max-width: calc(100% - 20px);
       "

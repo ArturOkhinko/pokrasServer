@@ -13,7 +13,7 @@ app.use(
     origin: "http://localhost:3001",
   })
 );
-
+("pokraskagrad.ru");
 app.use(express.json());
 app.use(cookieParser("querty"));
 app.use("/api", router);
