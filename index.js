@@ -10,10 +10,10 @@ const app = express();
 app.use(
   cors({
     credentials: true,
-    origin: "http://localhost:3001",
+    origin: process.env.URL_CLIENT,
   })
 );
-("pokraskagrad.ru");
+
 app.use(express.json());
 app.use(cookieParser("querty"));
 app.use("/api", router);

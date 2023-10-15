@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+require("dotenv").config();
 class MailServer {
   constructor() {
     this.transporter = nodemailer.createTransport({
@@ -7,15 +8,15 @@ class MailServer {
       port: 587,
       secure: false,
       auth: {
-        user: "pokrasgrad@gmail.com",
-        pass: "emfw eeif nhii cdge",
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
       },
     });
   }
   async sendActivationMail(to, link) {
     try {
       await this.transporter.sendMail({
-        from: "pokrasgrad@gmail.com",
+        from: process.env.SMTP_USER,
         to,
         subject: "",
         text: "",
