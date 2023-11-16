@@ -11,7 +11,7 @@ const app = express();
 app.use(
   cors({
     credentials: true,
-    origin: process.env.URL_CLIENT,
+    origin: [process.env.URL_CLIENT, process.env.URL_CLIENT_VK],
   })
 );
 
