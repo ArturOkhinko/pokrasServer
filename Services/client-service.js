@@ -17,9 +17,9 @@ class ClientController {
       return new Promise((resolve, reject) => {
         this.connect.query(`SELECT * FROM ${tableName}`, (err, res) => {
           if (err) {
-            return;
+            resolve({ status: 400, errorMessage: err });
           }
-          resolve(res);
+          resolve({ status: 200, res });
         });
       });
     };

@@ -211,6 +211,7 @@ class AdminService {
   }
   getInfoAboutUser(refreshToken) {
     const userData = tokenService.validRefreshToken(refreshToken);
+    console.log(refreshToken);
     if (!userData) {
       return {
         status: 400,
