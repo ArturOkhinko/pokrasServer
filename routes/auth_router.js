@@ -2,7 +2,7 @@ const Router = require("express").Router;
 const adminController = require("../controllers/admin-controller");
 const clientController = require("../controllers/client-controller");
 const userController = require("../controllers/user-controllers");
-
+const vkMiniAppsController = require("../controllers/vkApp-controller");
 const route = new Router();
 route.post("/registration", userController.registration);
 route.post("/login", userController.login);
@@ -25,4 +25,13 @@ route.get("/getInfoAboutUser", adminController.getInfoAboutUser);
 
 route.get("/getInfo", clientController.getInfo);
 
+route.post("/VK/authorisationVkApp", vkMiniAppsController.authorisation);
+route.post("/VK/registrationVkApp", vkMiniAppsController.registration);
+route.post("/VK/sendPromoCode", vkMiniAppsController.sendDiscountPromocode);
+route.post(
+  "/VK/getUserWidthDiscount",
+  vkMiniAppsController.getUserWidthDiscount
+);
+route.put("/VK/incrementDiscountVk", vkMiniAppsController.incrementDiscount);
+route.get("/VK/getInfoFromDatabase", vkMiniAppsController.getInfoFromDatabase);
 module.exports = route;
