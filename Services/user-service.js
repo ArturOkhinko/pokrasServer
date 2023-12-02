@@ -4,6 +4,7 @@ const tokenService = require("./token-service.js");
 const mysql = require("mysql");
 const dotenv = require("dotenv");
 const mailService = require("./mail-service.js");
+const ApiError = require("../Api-err/api-error.js");
 dotenv.config();
 class UserService {
   constructor() {
@@ -16,84 +17,74 @@ class UserService {
     });
   }
   async registration(email, password, code) {
-    try {
-      const isValidCode = code === process.env.ADMIN_CODE;
-      let role;
-      isValidCode ? (role = "admin") : (role = "user");
-      const selectUsers = () => {
-        return new Promise((resolve, reject) => {
-          this.connect.query(`SELECT * FROM users`, (err, res) => {
-            if (err) {
-              resolve({
-                status: 400,
-                message: "Ошибка запроса к базе данных",
-              });
-              return;
-            }
-            if (res.filter((element) => email === element.email)[0]) {
-              resolve({
-                status: 400,
-                message: `Пользователь с ${email} уже существует`,
-              });
-            }
+    const isValidCode = code === process.env.ADMIN_CODE;
+    let role;
+    isValidCode ? (role = "admin") : (role = "user");
+
+    const selectUsers = () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(`SELECT * FROM users`, (err, res) => {
+          if (err) {
             resolve({
-              status: 200,
-              message: `Письмо отправленно на почту ${email}`,
+              status: 401,
+              message: "Ошибка запроса к базе данных",
+              error: err,
             });
+            return;
+          }
+          if (res.filter((element) => email === element.email)[0]) {
+            resolve({
+              status: 401,
+              message: `Пользователь с ${email} уже существует`,
+            });
+          }
+          resolve({
+            status: 200,
+            message: `Письмо отправленно на почту ${email}`,
           });
         });
-      };
-      const send = await selectUsers().then((res) => res);
-      if (send.status === 400) {
-        return send;
-      }
-      const hashPassword = await bcrypt.hash(password, 3);
-      const activationLink = v4();
-      const userId = v4();
-      const tokens = tokenService.generateToken({
-        email,
-        activationLink,
-        role,
       });
-      const insertUsers = () => {
-        return new Promise((resolve, reject) => {
-          this.connect.query(
-            `
+    };
+    const send = await selectUsers();
+
+    if (send.status === 401) {
+      throw ApiError.BedRequest(send.message, [send.error]);
+    }
+
+    const hashPassword = await bcrypt.hash(password, 3);
+    const activationLink = v4();
+    const userId = v4();
+    const tokens = tokenService.generateToken({
+      email,
+      activationLink,
+      role,
+    });
+
+    const link = `${process.env.URL_API}/activated/:${activationLink}`;
+    try {
+      await mailService.sendActivationMail(email, link);
+    } catch (e) {
+      throw ApiError.EmailError();
+    }
+
+    this.connect.query(
+      `
             INSERT users(id, email, password, activatedLink, refreshToken, roles) 
             VALUES("${userId}", "${email}", "${hashPassword}", "${activationLink}", "${tokens.refreshToken}", "${role}")
-            `,
-            (err, res) => {
-              resolve({ id: userId, refreshToken: tokens.refreshToken });
-            }
-          );
-        });
-      };
-      const insertTokens = (userData) => {
-        this.connect.query(
-          `
-            INSERT tokens(id, refreshToken, accessToken)
-            VALUES ("${userData.id}", "${userData.refreshToken}", "${userData.accessToken}")
             `
-        );
-      };
-      insertUsers().then((res) => insertTokens(res));
+    );
+    this.connect.query(
+      `
+            INSERT tokens(id, refreshToken, accessToken)
+            VALUES ("${userId}", "${tokens.refreshToken}", "${tokens.accessToken}")
+            `
+    );
 
-      const link = `${process.env.URL_API}/activated/:${activationLink}`;
-      const status = mailService.sendActivationMail(email, link);
-      if (status.status === 400) {
-        return {
-          status: 400,
-          message: "Ошибка отправки письма",
-        };
-      }
-      return {
-        ...tokens,
-        activationLink,
-        role,
-      };
-    } catch (e) {
-      return null;
-    }
+    return {
+      ...tokens,
+      activationLink,
+      role,
+    };
   }
   async active(activationLink) {
     const sql = `UPDATE users SET isActivated=1 WHERE activatedLink="${activationLink}"`;

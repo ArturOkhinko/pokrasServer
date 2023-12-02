@@ -1,5 +1,6 @@
 const mysql = require("mysql");
 const dotenv = require("dotenv");
+const ApiError = require("../Api-err/api-error");
 
 dotenv.config();
 class ClientController {
@@ -13,17 +14,22 @@ class ClientController {
     });
   }
   async getInfo(tableName) {
-    const selectDescription = () => {
-      return new Promise((resolve, reject) => {
-        this.connect.query(`SELECT * FROM ${tableName}`, (err, res) => {
-          if (err) {
-            resolve({ status: 400, errorMessage: err });
-          }
+    const statusAboutOperation = new Promise((resolve, reject) => {
+      this.connect.query(`SELECT * FROM ${tableName}`, (err, res) => {
+        if (err) {
+          resolve({ status: 400, error: err });
+        }
+        if (res) {
           resolve({ status: 200, res });
-        });
+        }
       });
-    };
-    return selectDescription();
+    });
+    const status = await statusAboutOperation;
+
+    if (status.status === 400) {
+      throw ApiError.BedRequest("ошибка запроса к базе данных", status.error);
+    }
+    return { res: status.res };
   }
 }
 module.exports = new ClientController();

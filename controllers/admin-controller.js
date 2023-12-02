@@ -17,6 +17,7 @@ class AdminController {
   async deleteMainDescription(req, res, next) {
     try {
       const { id, accessToken } = req.body;
+      console.log("accessToken", accessToken);
       const responce = adminService.deleteMainDescription(id, accessToken);
       if (responce.status) {
         res.json({ status: responce.status, message: responce.message });

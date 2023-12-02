@@ -1,8 +1,8 @@
 const mysql = require("mysql");
 const dotenv = require("dotenv");
 const { v4 } = require("uuid");
-const { response } = require("express");
-const vkError = require("../Api-err/vk-error");
+const ApiError = require("../Api-err/api-error");
+const mailService = require("./mail-service");
 dotenv.config();
 
 class VkAppService {
@@ -15,55 +15,159 @@ class VkAppService {
       database: process.env.DATABASE_VK,
     });
   }
-  async getInfoAboutUser(email) {
-    return new Promise((resolve, reject) => {
-      this.connect.query(
-        `SELECT firstName, lastName, email FROM vk_users WHERE firstName = "${firstName}" AND lastName = "${lastName}" AND email = "${email}"`,
-        (err, res) => {
-          if (res[0]) {
-            resolve({
-              firstName: res.firstName,
-              lsatName: res.lastName,
-              email: res.email,
-            });
-            return;
+
+  async authorisation(email) {
+    const getInfoAboutUser = () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(
+          `SELECT email, discount FROM vk_users WHERE email = "${email}"`,
+          (err, res) => {
+            if (res[0]) {
+              resolve({ discount: res[0].discount });
+            }
+            reject({ message: "Пользователя не существует" });
           }
-          resolve({ error: " " });
-        }
-      );
-    });
+        );
+      });
+    };
+
+    try {
+      const discount = await getInfoAboutUser();
+      return { amountOfDiscount: discount };
+    } catch (error) {
+      throw ApiError.BedRequest(error.message);
+    }
   }
-  async writeDownInfoAboutNewUser(firstName, lastName, email) {
+
+  async registration(amountOfDiscount, email) {
     const id = v4();
-    return new Promise((resolve, reject) => {
-      this.connect.query(
-        `SELECT * FROM vk_users WHERE email = "${email}"`,
-        (err, res) => {
-          if (res[0]) {
-            resolve({ err: `пользователь ${email} уже существует` });
-            return;
+    const writeUser = async () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(
+          `SELECT * FROM vk_users WHERE email = "${email}"`,
+          (err, res) => {
+            if (res[0]) {
+              resolve({ error: `Пользователь ${email} уже существует` });
+            }
+            if (!res[0]) {
+              resolve();
+            }
           }
-          this.connect.query(
-            `INSERT INTO vk_users (id, firstName, lastName, email) VALUES("${id}", "${firstName}", "${lastName}", "${email}")`
-          );
-          resolve(null);
-        }
+        );
+      });
+    };
+    const statusOperation = await writeUser();
+    if (statusOperation?.error) {
+      throw ApiError.BedRequest(statusOperation.error);
+    }
+    this.connect.query(
+      `INSERT INTO vk_users (id, email, discount) VALUES("${id}", "${email}", "${amountOfDiscount}")`
+    );
+
+    try {
+      await mailService.sendDiscountPromocode(email, id);
+      console.log(id);
+    } catch (e) {
+      throw ApiError.EmailError();
+    }
+  }
+  async sendDiscountPromocode(email) {
+    const writeUser = async () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(
+          `SELECT id FROM vk_users WHERE email = "${email}"`,
+          (err, res) => {
+            if (!res[0]) {
+              resolve({ error: `Пользователь ${email} не существует` });
+            }
+            if (res) {
+              resolve({ id: res[0].id });
+            }
+          }
+        );
+      });
+    };
+    const statusOperation = await writeUser();
+    if (statusOperation?.error) {
+      throw ApiError.BedRequest(statusOperation.error);
+    }
+    try {
+      await mailService.sendDiscountPromocode(email, statusOperation.id);
+    } catch (e) {
+      throw ApiError.EmailError();
+    }
+    return { message: "письмо отправленно" };
+  }
+
+  async incrementDiscount(amountOfDiscount, email) {
+    if (amountOfDiscount > process.env.MAX_DISCOUNT_FROM_VK) {
+      throw ApiError.BedRequest("у пользователя максмальная скидка", []);
+    }
+    const increment = async () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(
+          `UPDATE vk_users SET discount="${amountOfDiscount}" WHERE email="${email}"`,
+          (err, res) => {
+            if (err) {
+              resolve({ error: err });
+            }
+            if (res) {
+              resolve();
+            }
+          }
+        );
+      });
+    };
+    const statusOperation = await increment();
+    if (statusOperation?.error) {
+      throw ApiError.BedRequest(
+        "Ошибка при обнавлении информации",
+        statusOperation.error
       );
-    });
+    }
+    return { message: "Данные измененны" };
   }
 
   async getInfoFromDatabase(nameTable) {
-    return new Promise((resolve, reject) => {
-      this.connect.query(`SELECT * FROM ${nameTable}`, (err, res) => {
-        if (err) {
-          resolve({ status: 400, message: err.message });
-        }
-        if (res) {
-          console.log(res);
-          resolve({ status: 200, res });
-        }
+    const getData = () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(`SELECT * FROM ${nameTable}`, (err, res) => {
+          if (err) {
+            resolve({ error: err });
+          }
+          if (res) {
+            resolve(res);
+          }
+        });
       });
-    });
+    };
+    const data = getData();
+    if (data.error) {
+      throw ApiError.BedRequest(data.error.message, [data.error]);
+    }
+    return data;
+  }
+  async getUserWidthDiscount(promocode) {
+    const getData = () => {
+      return new Promise((resolve, reject) => {
+        this.connect.query(
+          `SELECT email, discount FROM vk_users WHERE id = "${promocode}"`,
+          (err, res) => {
+            if (err) {
+              resolve({ error: err });
+            }
+            if (res) {
+              resolve(res[0]);
+            }
+          }
+        );
+      });
+    };
+    const data = getData();
+    if (data.error) {
+      throw ApiError.BedRequest(data.error.message, [data.error]);
+    }
+    return data;
   }
 }
 

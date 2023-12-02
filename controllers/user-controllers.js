@@ -6,18 +6,13 @@ class UserController {
   async registration(req, res, next) {
     try {
       const { email, password, code } = req.body;
-      console.log(req.cookies);
       const userData = await userService.registration(email, password, code);
-      if (userData.status) {
-        return res.status(userData.status).json({
-          status: userData.status,
-          message: userData?.message || "not message",
-        });
-      }
+
       res.cookie("refreshToken", userData.refreshToken, {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
       });
+
       return res.json({
         ...userData,
         email,
@@ -31,6 +26,7 @@ class UserController {
   async active(req, res, next) {
     try {
       const activationLink = req.params.link.slice(1);
+      console.log(activationLink);
       userService.active(activationLink);
       res.redirect(process.env.URL_CLIENT);
     } catch (e) {

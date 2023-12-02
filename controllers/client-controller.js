@@ -6,7 +6,7 @@ class ClientController {
       const { tableName } = req.query;
       console.log(tableName);
       const responce = await clientService.getInfo(tableName);
-      res.status(responce.status).json({ responce });
+      res.json({ responce });
     } catch (e) {
       next(e);
     }

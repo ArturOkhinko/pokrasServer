@@ -4,34 +4,50 @@ const vkAppService = require("../Services/vkApp-service");
 dotenv.config();
 
 class VkAppController {
-  async getInfoAboutUser(req, res, next) {
+  async authorisation(req, res, next) {
     try {
-      const { firstName, lastName, email } = req.body;
-      const operationStatus = await vkAppService.getInfoAboutUser(
-        firstName,
-        lastName,
-        email
-      );
-      if (operationStatus.error) {
-        return res.status(400).json({ error: operationStatus.error });
-      }
-      return res.status(200).json({ message: "пользователь авторизован" });
+      const { email } = req.body;
+      const discount = await vkAppService.authorisation(email);
+      return res.json({ amountOfDiscount: discount.amountOfDiscount });
     } catch (e) {
       next(e);
     }
   }
-  async writeDownInfoAboutNewUser(req, res, next) {
+  async registration(req, res, next) {
     try {
-      const { firstName, lastName, email } = req.body;
-      const operationStatus = await vkAppService.writeDownInfoAboutNewUser(
-        firstName,
-        lastName,
+      const { amountOfDiscount, email } = req.body;
+      await vkAppService.registration(amountOfDiscount, email);
+      res.json({
+        message: `Пользователь ${email} зарегестрирован, письмо отправленно`,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+  async sendDiscountPromocode(req, res, next) {
+    try {
+      const { email } = req.body;
+      console.log(email);
+      const operationStatus = await vkAppService.sendDiscountPromocode(email);
+      res.json({
+        message: operationStatus.message,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async incrementDiscount(req, res, next) {
+    try {
+      const { amountOfDiscount, email } = req.body;
+      console.log(amountOfDiscount);
+      const operationsInfo = await vkAppService.incrementDiscount(
+        amountOfDiscount,
         email
       );
-      if (operationStatus) {
-        return res.status(401).json({ error: operationStatus.err });
-      }
-      return res.status(200).json({ message: "пользователь зарегестрирован" });
+      res.json({
+        message: operationsInfo.message,
+      });
     } catch (e) {
       next(e);
     }
@@ -42,7 +58,19 @@ class VkAppController {
       const infoFromDatabase = await vkAppService.getInfoFromDatabase(
         tableName
       );
-      res.status(infoFromDatabase.status).json(infoFromDatabase);
+      res.json(infoFromDatabase);
+    } catch (e) {
+      next(e);
+    }
+  }
+  async getUserWidthDiscount(req, res, next) {
+    try {
+      const { promocode } = req.body;
+      console.log(promocode);
+      const infoFromDatabase = await vkAppService.getUserWidthDiscount(
+        promocode
+      );
+      res.json(infoFromDatabase);
     } catch (e) {
       next(e);
     }

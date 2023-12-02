@@ -1,10 +1,10 @@
 class ApiError extends Error {
   status;
   errors;
-  constructor(status, message, error = []) {
+  constructor(status, message, errors = []) {
     super(message);
     this.status = status;
-    this.errors = error;
+    this.errors = errors;
   }
 
   static UnauthorizedError() {
@@ -12,6 +12,9 @@ class ApiError extends Error {
   }
   static BedRequest(message, errors = []) {
     return new ApiError(400, message, errors);
+  }
+  static EmailError() {
+    return new ApiError(500, "Ошибка отправки письма");
   }
 }
 
