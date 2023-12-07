@@ -1,3 +1,4 @@
+const ApiError = require("../Api-err/api-error.js");
 const userService = require("../Services/user-service.js");
 const dotenv = require("dotenv");
 
@@ -50,19 +51,21 @@ class UserController {
   }
   async login(req, res, next) {
     try {
-      const { email, password, code } = req.body;
-      const userData = await userService.login(email, password, code);
-      if (userData.status) {
-        return res
-          .status(userData.status)
-          .json({ status: userData.status, message: userData.message });
+      const { email, password } = req.body;
+      const operationStatus = await userService.login(email, password);
+      if (operationStatus.error) {
+        throw ApiError.BedRequest(error);
       }
-      res.cookie("refreshToken", userData.refreshToken, {
+
+      res.cookie("refreshToken", operationStatus.refreshToken, {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
+        sameSite: "none",
+        secure: true,
       });
       res.json({
-        ...userData,
+        role: operationStatus.role,
+        accessToken: operationStatus.accessToken,
         email,
         status: 200,
         message: "Вы успешно вошли в аккаунт",

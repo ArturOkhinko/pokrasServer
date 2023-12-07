@@ -5,6 +5,7 @@ const mysql = require("mysql");
 const dotenv = require("dotenv");
 const mailService = require("./mail-service.js");
 const ApiError = require("../Api-err/api-error.js");
+const { error } = require("console");
 dotenv.config();
 class UserService {
   constructor() {
@@ -15,6 +16,7 @@ class UserService {
       password: process.env.DB_PASSWORD,
       database: process.env.DATABASE,
     });
+    this.connect.query("ALTER TABLE ");
   }
   async registration(email, password, code) {
     const isValidCode = code === process.env.ADMIN_CODE;
@@ -160,68 +162,32 @@ class UserService {
     };
     return selectRefresh();
   }
-  async login(email, password, code) {
-    let role = "user";
-    const isValidCode = code === process.env.ADMIN_CODE;
-    if (!isValidCode) {
-      return {
-        status: 400,
-        message: "Неверный код",
-      };
-    }
+  async login(email, password) {
     const selectUser = () => {
       return new Promise((resolve, reject) => {
         this.connect.query(
           `
-                      SELECT * FROM users WHERE email="${email}"
+                      SELECT id, roles, password FROM users WHERE email="${email}"
                   `,
           (err, res) => {
-            if (err) {
-              resolve({
-                status: 400,
-              });
-              return;
-            }
             if (!res[0]) {
               resolve({
-                status: 400,
-                message: `Пользователя ${email} не существует`,
+                error: `Пользователя ${email} не существует`,
               });
               return;
             }
             if (res[0]) {
-              resolve(res[0]);
+              resolve({
+                role: res[0].roles,
+                id: res[0].id,
+                password: res[0].password,
+              });
             }
           }
         );
       });
     };
-    selectUser().then((res) => {
-      if (res.roles === "admin") {
-        role = "admin";
-      }
-    });
-    if (!isValidCode && role === "admin") {
-      return {
-        status: 400,
-        message: "Неверный код",
-      };
-    }
-    const updateRefreshToken = (tokens) => {
-      this.connect.query(
-        `
-                UPDATE users SET refreshToken="${tokens.refreshToken}" WHERE email="${email}"
-                `,
-        (err, res) => {
-          if (err) {
-            console.log(err);
-          }
-          if (res) {
-            console.log(res);
-          }
-        }
-      );
-    };
+
     const updateTokens = (tokens, res) => {
       this.connect.query(
         `
@@ -229,59 +195,32 @@ class UserService {
             `
       );
     };
-    const selectTokens = (id) => {
-      return new Promise((resolve, reject) => {
-        this.connect.query(
-          `
-                   SELECT * FROM tokens WHERE id="${id}"
-                `,
-          (err, res) => {
-            resolve(res);
-          }
-        );
-      });
-    };
-    return selectUser().then(async (res) => {
-      if (res.status) {
-        return {
-          status: res.status,
-          message: res.message,
-        };
-      }
-      const isPassword = bcrypt.compare(password, res.password);
 
-      const status = await isPassword.then((res) => {
-        if (!res) {
-          return {
-            status: 400,
-            message: "Неверный пароль",
-          };
-        }
+    return selectUser().then(async (res) => {
+      if (res.error) {
         return {
-          status: 200,
-        };
-      });
-      if (status.status === 400) {
-        return {
-          status: status.status,
-          message: status.message,
+          error: res.error,
         };
       }
+      const isPassword = await bcrypt.compare(password, res.password);
+
+      if (!isPassword) {
+        return {
+          error: "Неверный пароль",
+        };
+      }
+
       const tokens = tokenService.generateToken({
         email: res.email,
         activationLink: res.activationLink,
-        role,
+        role: res.role,
       });
       updateTokens(tokens, res);
-      selectTokens(res.id).then((user) => {
-        if (user[0]) {
-          updateRefreshToken(tokens);
-        }
-      });
 
       return {
         ...tokens,
-        role,
+        role: res.role,
+        id: res.id,
       };
     });
   }
