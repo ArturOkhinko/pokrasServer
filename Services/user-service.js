@@ -25,31 +25,26 @@ class UserService {
 
     const selectUsers = () => {
       return new Promise((resolve, reject) => {
-        this.connect.query(`SELECT * FROM users`, (err, res) => {
-          if (err) {
+        this.connect.query(
+          `SELECT * FROM users WHERE email = "${email}"`,
+          (err, res) => {
+            if (res[0]) {
+              resolve({
+                status: 400,
+                message: `Пользователь с ${email} уже существует`,
+              });
+            }
             resolve({
-              status: 401,
-              message: "Ошибка запроса к базе данных",
-              error: err,
-            });
-            return;
-          }
-          if (res.filter((element) => email === element.email)[0]) {
-            resolve({
-              status: 401,
-              message: `Пользователь с ${email} уже существует`,
+              status: 200,
             });
           }
-          resolve({
-            status: 200,
-            message: `Письмо отправленно на почту ${email}`,
-          });
-        });
+        );
       });
     };
+
     const send = await selectUsers();
 
-    if (send.status === 401) {
+    if (send.status === 400) {
       throw ApiError.BedRequest(send.message, [send.error]);
     }
 
@@ -61,7 +56,6 @@ class UserService {
       activationLink,
       role,
     });
-
     const link = `${process.env.URL_API}/activated/:${activationLink}`;
     try {
       await mailService.sendActivationMail(email, link);
@@ -71,8 +65,8 @@ class UserService {
 
     this.connect.query(
       `
-            INSERT users(id, email, password, activatedLink, refreshToken, roles) 
-            VALUES("${userId}", "${email}", "${hashPassword}", "${activationLink}", "${tokens.refreshToken}", "${role}")
+            INSERT users(id, email, password, activatedLink, roles) 
+            VALUES("${userId}", "${email}", "${hashPassword}", "${activationLink}", "${role}")
             `
     );
     this.connect.query(
@@ -84,7 +78,6 @@ class UserService {
 
     return {
       ...tokens,
-      activationLink,
       role,
     };
   }

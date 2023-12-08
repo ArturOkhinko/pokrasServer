@@ -2,6 +2,7 @@ const { query } = require("express");
 const tokenService = require("./token-service.js");
 const mysql = require("mysql");
 const { v4 } = require("uuid");
+const ApiError = require("../Api-err/api-error.js");
 class AdminService {
   constructor() {
     this.connect = mysql.createPool({
@@ -213,19 +214,13 @@ class AdminService {
     const userData = tokenService.validRefreshToken(refreshToken);
     console.log(refreshToken);
     if (!userData) {
-      return {
-        status: 400,
-        message: "Пользователь не авторизован",
-      };
+      throw ApiError.BedRequest("Пользователь не авторизован");
     }
     const selectTokens = () => {
       return new Promise((resolve, reject) => {
         this.connect.query(
           `SELECT * FROM tokens WHERE refreshToken="${refreshToken}"`,
           (err, res) => {
-            if (err) {
-              console.log(err);
-            }
             if (res && res[0]) {
               resolve(res[0].accessToken);
             }
@@ -236,6 +231,7 @@ class AdminService {
         );
       });
     };
+
     return () => {
       const token = selectTokens();
       if (token.message) {
