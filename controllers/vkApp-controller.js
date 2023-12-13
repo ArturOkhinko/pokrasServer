@@ -63,13 +63,10 @@ class VkAppController {
       next(e);
     }
   }
-  async getUserWidthDiscount(req, res, next) {
+  async searchUserWidthDiscount(req, res, next) {
     try {
-      const { promocode } = req.body;
-      console.log(promocode);
-      const infoFromDatabase = await vkAppService.getUserWidthDiscount(
-        promocode
-      );
+      const { data } = req.body;
+      const infoFromDatabase = await vkAppService.searchUserWidthDiscount(data);
       res.json(infoFromDatabase);
     } catch (e) {
       next(e);

@@ -1,13 +1,10 @@
+const ApiError = require("../Api-err/api-error");
 const adminService = require("../Services/admin-service");
 
 class AdminController {
   async mainDescription(req, res, next) {
     try {
-      const data = req.body;
-      if (!data.accessToken) {
-        res.json({ status: 400, message: "пользователь не авторизован" });
-        return;
-      }
+      const { data } = req.body;
       const status = await adminService.mainDescription(data);
       res.json({ ...status });
     } catch (e) {
@@ -16,26 +13,18 @@ class AdminController {
   }
   async deleteMainDescription(req, res, next) {
     try {
-      const { id, accessToken } = req.body;
-      console.log("accessToken", accessToken);
-      const responce = adminService.deleteMainDescription(id, accessToken);
-      if (responce.status) {
-        res.json({ status: responce.status, message: responce.message });
-        return;
-      }
-      responce.then((status) =>
-        res.json({ status: status.status, message: status.message })
-      );
+      const { id } = req.body;
+      await adminService.deleteMainDescription(id);
+      res.json({ message: "Удаленно" });
     } catch (e) {
       next(e);
     }
   }
   async descriptionPost(req, res, next) {
     try {
-      const data = req.body;
+      const { data } = req.body;
       if (!data) {
-        res.status(400).json({ status: 400, message: "Поля не заполнены" });
-        return;
+        throw ApiError.BedRequest("Поля не заполнены");
       }
       const responce = await adminService.descriptionPost(data);
       res.json(responce);
@@ -45,29 +34,22 @@ class AdminController {
   }
   async removeDescriptionPost(req, res, next) {
     try {
-      const { accessToken, id } = req.body;
-      const userData = await adminService.removeDescriptionPost(
-        accessToken,
-        id
-      );
-      return res.json(userData);
+      const { id } = req.body;
+      await adminService.removeDescriptionPost(id);
+      return res.json({ id });
     } catch (e) {
       next(e);
     }
   }
   async wheelInfo(req, res, next) {
     try {
-      const { defaultValue, price, accessToken, radius, text, wheelName } =
-        req.body;
+      const { data } = req.body;
       const info = await adminService.wheelInfo(
-        defaultValue,
-        price,
-        accessToken,
-        radius,
-        text,
-        wheelName
+        data.id,
+        data.initialPriceCount,
+        data.price
       );
-      res.status(info.status).json(info);
+      res.json(info);
     } catch (e) {
       next(e);
     }
@@ -75,16 +57,9 @@ class AdminController {
   async getInfoAboutUser(req, res, next) {
     try {
       const { refreshToken } = req.cookies;
-      const userData = await adminService.getInfoAboutUser(refreshToken)();
-      if (userData.status === 400) {
-        return res.status(userData.status).json(userData);
-      }
+      const userData = await adminService.getInfoAboutUser(refreshToken);
       return res.json({
-        email: userData.email,
-        role: userData.role,
-        accessToken: await userData.accessToken,
-        status: 200,
-        message: userData.message,
+        ...userData,
       });
     } catch (e) {
       next(e);
@@ -92,24 +67,17 @@ class AdminController {
   }
   async updateInfoTruckWheel(req, res, next) {
     try {
-      const { data, accessToken } = req.body;
-      const operationInfo = await adminService.updateInfoTruckWheels(
-        data,
-        accessToken
-      );
-      console.log(operationInfo);
-      res.status(operationInfo.status).json(operationInfo);
+      const { data } = req.body;
+      const operationInfo = await adminService.updateInfoTruckWheels(data);
+      res.json(operationInfo);
     } catch (e) {
       next(e);
     }
   }
   async updateInfoSupports(req, res, next) {
     try {
-      const { data, accessToken } = req.body;
-      const operationInfo = await adminService.updateInfoSupports(
-        data,
-        accessToken
-      );
+      const { data } = req.body;
+      const operationInfo = await adminService.updateInfoSupports(data);
       return res.status(operationInfo.status).json(operationInfo);
     } catch (e) {
       next(e);
@@ -117,48 +85,36 @@ class AdminController {
   }
   async updateInfoSandblast(req, res, next) {
     try {
-      const { data, accessToken } = req.body;
-      const operationInfo = await adminService.updateInfoSandblast(
-        data,
-        accessToken
-      );
-      return res.status(operationInfo.status).json(operationInfo);
+      const { data } = req.body;
+      const operationInfo = await adminService.updateInfoSandblast(data);
+      return res.json(operationInfo);
     } catch (e) {
       next(e);
     }
   }
   async deleteInfoSandblast(req, res, next) {
     try {
-      const { data, accessToken } = req.body;
-      const operationInfo = await adminService.deleteInfoSandblast(
-        data,
-        accessToken
-      );
-      return res.status(operationInfo.status).json(operationInfo);
+      const { id } = req.body;
+      const operationInfo = await adminService.deleteInfoSandblast(id);
+      return res.json(operationInfo);
     } catch (e) {
       next(e);
     }
   }
-  async insertPowderPoint(req, res, next) {
+  async addImgOnPrintPowderPoint(req, res, next) {
     try {
-      const { data, accessToken } = req.body;
-      const operationInfo = await adminService.insertPowderPoint(
-        data,
-        accessToken
-      );
-      return res.status(operationInfo.status).json(operationInfo);
+      const { data } = req.body;
+      const operationInfo = await adminService.addImgOnPowderPoint(data);
+      return res.json(operationInfo);
     } catch (e) {
       next(e);
     }
   }
-  async deletePowderPoint(req, res, next) {
+  async removeImgOnPrintPowderPoint(req, res, next) {
     try {
-      const { data, accessToken } = req.body;
-      const operationInfo = await adminService.deletePowderPoint(
-        data,
-        accessToken
-      );
-      return res.status(operationInfo.status).json(operationInfo);
+      const { id } = req.body;
+      const operationInfo = await adminService.removeImgOnPrintPowderPoint(id);
+      return res.json(operationInfo);
     } catch (e) {
       next(e);
     }

@@ -5,8 +5,8 @@ class ClientController {
     try {
       const { tableName } = req.query;
       console.log(tableName);
-      const responce = await clientService.getInfo(tableName);
-      res.json({ responce });
+      const response = await clientService.getInfo(tableName);
+      res.json(response);
     } catch (e) {
       next(e);
     }

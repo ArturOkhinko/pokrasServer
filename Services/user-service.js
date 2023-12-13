@@ -5,7 +5,6 @@ const mysql = require("mysql");
 const dotenv = require("dotenv");
 const mailService = require("./mail-service.js");
 const ApiError = require("../Api-err/api-error.js");
-const { error } = require("console");
 dotenv.config();
 class UserService {
   constructor() {
@@ -98,56 +97,32 @@ class UserService {
   }
   async refresh(refreshToken) {
     if (!refreshToken) {
-      return {
-        status: 400,
-        message: "Пользователь не авторизован",
-      };
+      throw ApiError.UnauthorizedError();
     }
     const userData = tokenService.validRefreshToken(refreshToken);
-    console.log("refreshToken", refreshToken);
-    console.log("userData", userData);
     if (!userData) {
-      return {
-        status: 400,
-        message: "Пользователь не авторизован",
-      };
+      throw ApiError.UnauthorizedError();
     }
     const selectRefresh = () => {
       return new Promise((resolve, reject) => {
         this.connect.query(
-          `SELECT id, email, activatedLink, roles FROM users WHERE refreshToken="${refreshToken}"`,
+          `SELECT id FROM users WHERE email="${userData.email}"`,
           (err, res) => {
             if (err || !res[0]) {
-              console.log("res", res[0]);
               resolve({
-                status: 400,
-                message: "Залогиниться",
+                error: "UnauthorisedError",
               });
               return;
             }
             const tokens = tokenService.generateToken({
-              email: res[0].email,
-              activationLink: res[0].activatedLink,
-              role: res[0].roles,
+              email: userData.email,
+              role: userData.role,
             });
             this.connect.query(
-              `UPDATE FROM users SET refreshToken="${tokens.refreshToken} WHERE id="${res[0].id}"`
-            );
-            this.connect.query(
-              `UPDATE FROM tokens SET refreshToken="${tokens.refreshToken}" WHERE id="${res[0].id}"`,
-              (err, res) => {
-                if (err) {
-                  console.log(err);
-                }
-                if (res) {
-                  console.log(res);
-                }
-              }
+              `UPDATE tokens SET accessToken = "${tokens.accessToken}" WHERE id="${res[0].id}"`
             );
             resolve({
-              ...tokens,
-              email: res[0].email,
-              role: res[0].roles,
+              accessToken: tokens.accessToken,
             });
           }
         );
@@ -160,7 +135,7 @@ class UserService {
       return new Promise((resolve, reject) => {
         this.connect.query(
           `
-                      SELECT id, roles, password FROM users WHERE email="${email}"
+                      SELECT id, email, roles, password FROM users WHERE email="${email}"
                   `,
           (err, res) => {
             if (!res[0]) {
@@ -174,6 +149,7 @@ class UserService {
                 role: res[0].roles,
                 id: res[0].id,
                 password: res[0].password,
+                email: res[0].email,
               });
             }
           }
@@ -191,21 +167,16 @@ class UserService {
 
     return selectUser().then(async (res) => {
       if (res.error) {
-        return {
-          error: res.error,
-        };
+        throw ApiError.BedRequest(res.error);
       }
       const isPassword = await bcrypt.compare(password, res.password);
 
       if (!isPassword) {
-        return {
-          error: "Неверный пароль",
-        };
+        throw ApiError.BedRequest(res.error);
       }
 
       const tokens = tokenService.generateToken({
         email: res.email,
-        activationLink: res.activationLink,
         role: res.role,
       });
       updateTokens(tokens, res);

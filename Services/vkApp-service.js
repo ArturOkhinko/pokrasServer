@@ -147,14 +147,14 @@ class VkAppService {
     }
     return data;
   }
-  async getUserWidthDiscount(promocode) {
-    const getData = () => {
+  async searchUserWidthDiscount(data) {
+    const searchUser = () => {
       return new Promise((resolve, reject) => {
         this.connect.query(
-          `SELECT email, discount FROM vk_users WHERE id = "${promocode}"`,
+          `SELECT email, discount FROM vk_users WHERE id = "${data.promocode}"`,
           (err, res) => {
             if (err) {
-              resolve({ error: err });
+              reject({ error: err });
             }
             if (res) {
               resolve(res[0]);
@@ -163,11 +163,12 @@ class VkAppService {
         );
       });
     };
-    const data = getData();
-    if (data.error) {
-      throw ApiError.BedRequest(data.error.message, [data.error]);
+    try {
+      const data = searchUser();
+      return data;
+    } catch (e) {
+      throw ApiError.BedRequest("", [e]);
     }
-    return data;
   }
 }
 

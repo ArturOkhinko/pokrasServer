@@ -17,9 +17,11 @@ class UserController {
 
       return res.json({
         user: {
-          email,
           accessToken: userData.accessToken,
-          role: userData.role,
+          user: {
+            email,
+            role: userData.role,
+          },
         },
         message: `Письмо с ссылкой для подтверждения отправленно на почту ${email}`,
       });
@@ -40,14 +42,12 @@ class UserController {
   async refresh(req, res, next) {
     try {
       const { refreshToken } = req.cookies;
-      const userData = await userService.refresh(refreshToken);
-      if (userData.status === 400) {
-        return res.status(400).json({
-          status: userData.status,
-          message: userData?.message || "not message",
-        });
+      console.log("refresh");
+      const operationInfo = await userService.refresh(refreshToken);
+      if (operationInfo.error) {
+        throw ApiError.UnauthorizedError();
       }
-      res.json({ ...userData });
+      res.json({ accessToken: operationInfo.accessToken });
     } catch (e) {
       next(e);
     }
@@ -56,9 +56,6 @@ class UserController {
     try {
       const { email, password } = req.body;
       const operationStatus = await userService.login(email, password);
-      if (operationStatus.error) {
-        throw ApiError.BedRequest(error);
-      }
 
       res.cookie("refreshToken", operationStatus.refreshToken, {
         maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -67,11 +64,11 @@ class UserController {
         secure: true,
       });
       res.json({
-        role: operationStatus.role,
         accessToken: operationStatus.accessToken,
-        email,
-        status: 200,
-        message: "Вы успешно вошли в аккаунт",
+        user: {
+          role: operationStatus.role,
+          email,
+        },
       });
     } catch (e) {
       next(e);

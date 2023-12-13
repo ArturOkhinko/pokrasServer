@@ -17,19 +17,19 @@ class ClientController {
     const statusAboutOperation = new Promise((resolve, reject) => {
       this.connect.query(`SELECT * FROM ${tableName}`, (err, res) => {
         if (err) {
-          resolve({ status: 400, error: err });
+          reject({ error: err });
         }
         if (res) {
-          resolve({ status: 200, res });
+          resolve(res);
         }
       });
     });
-    const status = await statusAboutOperation;
-
-    if (status.status === 400) {
-      throw ApiError.BedRequest("ошибка запроса к базе данных", status.error);
+    try {
+      const info = await statusAboutOperation;
+      return info;
+    } catch (e) {
+      throw ApiError.BedRequest("ошибка запроса к базе данных", [e]);
     }
-    return { res: status.res };
   }
 }
 module.exports = new ClientController();
