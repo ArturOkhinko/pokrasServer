@@ -15,7 +15,6 @@ class UserService {
       password: process.env.DB_PASSWORD,
       database: process.env.DATABASE,
     });
-    this.connect.query("ALTER TABLE ");
   }
   async registration(email, password, code) {
     const isValidCode = code === process.env.ADMIN_CODE;
@@ -139,8 +138,8 @@ class UserService {
                   `,
           (err, res) => {
             if (!res[0]) {
-              resolve({
-                error: `Пользователя ${email} не существует`,
+              reject({
+                message: `Пользователя ${email} не существует`,
               });
               return;
             }
@@ -164,32 +163,29 @@ class UserService {
             `
       );
     };
-
-    return selectUser().then(async (res) => {
-      if (res.error) {
-        throw ApiError.BedRequest(res.error);
-      }
-      const isPassword = await bcrypt.compare(password, res.password);
-
+    try {
+      const userData = await selectUser();
+      const isPassword = await bcrypt.compare(password, userData.password);
       if (!isPassword) {
-        throw ApiError.BedRequest(res.error);
+        throw ApiError.BedRequest("Неверный пароль");
       }
-
       const tokens = tokenService.generateToken({
-        email: res.email,
-        role: res.role,
+        email: userData.email,
+        role: userData.role,
       });
-      updateTokens(tokens, res);
+      updateTokens(tokens, userData);
 
       return {
         ...tokens,
-        role: res.role,
-        id: res.id,
+        role: userData.role,
+        id: userData.id,
       };
-    });
+    } catch (e) {
+      throw ApiError.BedRequest(e.message, []);
+    }
   }
   async logout(refreshToken) {
-    const userData = tokenService.validRefreshToken(refreshToken);
+    const userData = await tokenService.validRefreshToken(refreshToken);
     return userData;
   }
 }

@@ -11,8 +11,6 @@ class UserController {
       res.cookie("refreshToken", userData.refreshToken, {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
       });
 
       return res.json({
@@ -60,8 +58,6 @@ class UserController {
       res.cookie("refreshToken", operationStatus.refreshToken, {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        sameSite: "none",
-        secure: true,
       });
       res.json({
         accessToken: operationStatus.accessToken,
@@ -81,14 +77,13 @@ class UserController {
       if (userData) {
         res.clearCookie("refreshToken");
         return res.json({
-          status: 200,
           message: "Вы успешно вышли из аккаунта",
         });
       }
-      return res.status(400).json({
-        status: 400,
-        message: "Необходимо войти в аккаунт чтобы из него выйти",
-      });
+      throw ApiError.BedRequest(
+        "Необходимо войти в аккаунт чтобы из него выйти",
+        []
+      );
     } catch (e) {
       next(e);
     }
